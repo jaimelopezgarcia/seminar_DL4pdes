@@ -1,0 +1,7 @@
+tensorboard
+albumentations
+skorch
+fastai
+baal
+scikit-image
+tensorflow

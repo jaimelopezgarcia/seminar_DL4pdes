@@ -1,0 +1,15 @@
+pandas
+xlrd
+openpyxl
+matplotlib
+plotly
+jax 
+jaxlib
+numpy
+scipy
+scikit-learn
+tqdm
+flask
+bokeh
+dash
+gunicorn
