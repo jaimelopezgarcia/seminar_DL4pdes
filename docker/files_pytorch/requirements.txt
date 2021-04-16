@@ -5,3 +5,4 @@ fastai
 baal
 scikit-image
 tensorflow
+pytorch-lightning

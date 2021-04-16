@@ -2,6 +2,11 @@ from scipy.interpolate import griddata
 import imageio 
 from PIL import Image
 import numpy as np
+import torch
+from tqdm import tqdm
+import io
+import matplotlib.pyplot as plt
+import os
 
 def fenics_fun_2_grid( fun, mesh, Nx_Ny = None):
     
@@ -56,3 +61,128 @@ def make_gif(list_ims, save_name, duration = 0.05, size = (200,200)):
             im = Image.fromarray(im).resize(size)
             writer.append_data(np.array(im))
     writer.close()
+    
+    
+    
+def make_simulation_gif(eval_sim, real_sim, name, duration = 1, skip_time = ""):
+    
+    assert np.shape(eval_sim) == np.shape(real_sim), "shapes_not equal"
+    
+    
+    str_time = skip_time
+    
+    arrays = []
+    for i in range(len(eval_sim)):
+        
+        if skip_time:
+        
+            str_time = "{} x dt".format(skip_time*i)
+            
+        im1 = eval_sim[i]
+        im2 = real_sim[i]
+        plt.close("all")
+        fig = plt.figure()
+        plt.subplot(121)
+        plt.title("Predicted {}".format(str_time),fontdict = {"fontsize":22})
+        o = plt.imshow(im1)
+        plt.axis('off')
+        plt.subplot(122)
+        plt.title("Real {}".format(str_time),fontdict = {"fontsize":22})
+        o = plt.imshow(im2)
+        plt.axis('off')
+        fig.tight_layout()
+        
+        array = fig_to_array(fig)
+        arrays.append(array)
+        
+    make_gif(arrays, name , duration = duration)
+    
+
+def eval_sim(model, test_sim):
+    
+    with torch.no_grad():
+        test_sim = torch.Tensor(test_sim)
+
+        H,W = test_sim.shape[-2],test_sim.shape[-1]
+        steps = test_sim.shape[0]
+
+
+        _init = test_sim[0].view(1,1,H,W)
+
+        x_eval = model(_init)
+
+        evals = []
+        evals.append(np.array(x_eval.view(H,W)))
+
+        for i in tqdm(range(1,len(test_sim))):
+            
+            x_eval = model(x_eval)
+            
+            evals.append(np.array(x_eval.view(H,W)))
+            
+        pred = np.array(evals)[:-1]
+        real = np.array(test_sim).reshape((len(test_sim),H,W))[1:]
+        
+        first = np.array(test_sim[0].view(1,H,W))
+        
+        pred = np.concatenate((first,pred),axis = 0)
+        real = np.concatenate((first,real), axis = 0)
+        
+    return pred, real
+
+
+
+def fig_to_array(fig):
+    
+    io_buf = io.BytesIO()
+    fig.savefig(io_buf, format='raw',quality = 95)
+    io_buf.seek(0)
+    img_arr = np.reshape(np.frombuffer(io_buf.getvalue(), dtype=np.uint8),
+                         newshape=(int(fig.bbox.bounds[3]), int(fig.bbox.bounds[2]), -1))
+    io_buf.close()
+    
+    return img_arr
+
+
+
+
+
+def plot_phases(pred_sim, real_sim, results_dir, index = 0, epoch = ""):
+    
+    try:
+        os.makedirs(results_dir)
+    except:
+        pass
+    
+    name = "{}_epoch_sim_{}_phases.png".format(epoch,index)
+    
+    fig = plt.figure()
+    
+
+    plt.subplot(121)
+    means = [np.mean(np.abs(rs)) for rs in real_sim]
+    plt.plot(means, label = "real")
+
+    meansp = [np.mean(np.abs(ps)) for ps in pred_sim]
+    plt.plot(meansp, label = "pred")
+
+    plt.legend()
+
+    plt.title("abs mean phase")
+
+
+    plt.subplot(122)
+    means = [np.mean(rs) for rs in real_sim]
+    plt.plot(means, label = "real")
+
+    meansp = [np.mean(ps) for ps in pred_sim]
+    plt.plot(meansp, label = "pred")
+
+    plt.legend()
+
+    plt.title("abs  phase")
+    
+    fig.suptitle("epoch {}".format(epoch))
+    fig.savefig(os.path.join(results_dir,name))
+    
+    return fig  

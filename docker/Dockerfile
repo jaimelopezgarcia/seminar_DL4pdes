@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="quay.io/fenicsproject/stable:current"
+ARG BASE_IMAGE="quay.io/fenicsproject/stable:latest"
 FROM $BASE_IMAGE
 
 USER root

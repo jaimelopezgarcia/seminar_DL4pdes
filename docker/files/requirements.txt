@@ -3,7 +3,7 @@ xlrd
 openpyxl
 matplotlib
 plotly
-jax 
+jax
 jaxlib
 numpy
 scipy
@@ -13,3 +13,4 @@ flask
 bokeh
 dash
 gunicorn
+fire

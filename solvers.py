@@ -140,15 +140,18 @@ class PeriodicBoundary(SubDomain):
 
 
 
-def solve_allen_cahn(eps = 0.01, n_elements = 60,T_dt = 500, initial_conditions = "random", dtype_out = np.float32):
+def solve_allen_cahn(eps = 0.01, n_elements = 60,T_dt = 200, ratio_speed = 10 ,initial_conditions = "random", dtype_out = np.float32):
     
+    t0 = 100 # iterations to solve with smaller dt
     
+    dt0 = eps*2*1e-3
+    
+    ratio_speed = ratio_speed #increasing step when evolution when interfaces are formed
+    
+    _dt = dt0*ratio_speed
 
-    dt = eps*2*1e-3
-    Tf = T_dt
-    T = np.arange(0,T_dt*dt,dt)
-
-
+    dt = Constant(dt0)
+    
     mesh = UnitSquareMesh(n_elements, n_elements)
     V= FunctionSpace(mesh, "P", 1,constrained_domain=PeriodicBoundary())
 
@@ -166,9 +169,14 @@ def solve_allen_cahn(eps = 0.01, n_elements = 60,T_dt = 500, initial_conditions 
     F = (u*v-u_n*v+dt*dot(grad(u),grad(v))+dt*(1/eps**2)*(u**2-1)*u*v)*dx
 
 
+    sols_first = []
+    
     sols = []
-    for t in tqdm(T):
-
+    for i in tqdm(range(T_dt+t0)):
+        
+        if i>t0:
+            
+            dt.assign(_dt) #increasing dt after initial decomposition
 
         solve(F == 0, u)
 
@@ -177,9 +185,16 @@ def solve_allen_cahn(eps = 0.01, n_elements = 60,T_dt = 500, initial_conditions 
         u_n.assign(u)
 
         X,Y,Z = fenics_fun_2_grid(u,mesh)
-        sols.append(Z)
         
+        if i>t0:
+            sols.append(Z)
+        else:
+            sols_first.append(Z)
+            
+    sols_first = np.array(sols_first).astype(dtype_out)[::ratio_speed]
     sols = np.array(sols).astype(dtype_out)
+    
+    sols = np.concatenate((sols_first,sols), axis = 0)
     
     return sols
 
