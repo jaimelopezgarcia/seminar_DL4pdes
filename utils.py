@@ -100,8 +100,13 @@ def make_simulation_gif(eval_sim, real_sim, name, duration = 1, skip_time = ""):
 
 def eval_sim(model, test_sim):
     
+
+        
     with torch.no_grad():
-        test_sim = torch.Tensor(test_sim)
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
+
+        test_sim = torch.Tensor(test_sim).to(device)
 
         H,W = test_sim.shape[-2],test_sim.shape[-1]
         steps = test_sim.shape[0]
@@ -112,18 +117,19 @@ def eval_sim(model, test_sim):
         x_eval = model(_init)
 
         evals = []
-        evals.append(np.array(x_eval.view(H,W)))
+        evals.append(np.array(x_eval.view(H,W).cpu()))
 
         for i in tqdm(range(1,len(test_sim))):
             
             x_eval = model(x_eval)
             
-            evals.append(np.array(x_eval.view(H,W)))
+            evals.append(np.array(x_eval.view(H,W).cpu()))
             
-        pred = np.array(evals)[:-1]
-        real = np.array(test_sim).reshape((len(test_sim),H,W))[1:]
         
-        first = np.array(test_sim[0].view(1,H,W))
+        pred = np.array(evals)[:-1]
+        real = np.array(test_sim.cpu()).reshape((len(test_sim),H,W))[1:]
+        
+        first = np.array(test_sim[0].view(1,H,W).cpu())
         
         pred = np.concatenate((first,pred),axis = 0)
         real = np.concatenate((first,real), axis = 0)

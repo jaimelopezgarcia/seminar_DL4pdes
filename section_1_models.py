@@ -135,12 +135,14 @@ class BasicNetSkipCon(nn.Module):
     
     """
     
-    def __init__(self, in_channels, hidden_channels, out_channels, blocks = [2, 2, 2, 2, 2], normalization = True):
+    def __init__(self, in_channels, hidden_channels, out_channels, blocks = [2, 2, 2, 2, 2], normalization = True, skip_con_weight = 0.1):
         
         super().__init__()
         
+        
         layers = []
         
+        self._skip_con_weight = skip_con_weight
         for i,_block in enumerate(blocks):
             
             
@@ -159,11 +161,13 @@ class BasicNetSkipCon(nn.Module):
         self._hidden_layers = nn.ModuleList(layers)
         
         
-        self._out_layer = nn.Conv2d( hidden_channels , out_channels, kernel_size=3, stride = 1,
-             padding=1, bias=True)
+        self._out_layer = nn.Conv2d( hidden_channels , out_channels, kernel_size=1, stride = 1,
+             padding=0, bias=True)
         
         torch.nn.init.kaiming_uniform_(self._out_layer.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
-                
+        
+
+         
         #symmetrical skip connections, make pairs
         
         
@@ -181,6 +185,7 @@ class BasicNetSkipCon(nn.Module):
         
         self._pairs = {val:key for key,val in pairs.items() }
         
+
         
     def forward(self, x):
         
@@ -195,9 +200,14 @@ class BasicNetSkipCon(nn.Module):
             outs.append(_x)
             
             if i in self._pairs:
-                _x = _x + outs[self._pairs[i]]
+                _x = _x + self._skip_con_weight*outs[self._pairs[i]]
+        
         
 
+            
+            
+
+            
         _x = self._out_layer(_x) + x
 
         return _x  
@@ -213,6 +223,8 @@ class ModelSim(pl.LightningModule):
         self._tol_next_step = tol_next_step #if error less than this adds next step
         self._n_steps_ahead = 0
         self._lr = lr
+        
+        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
         try:
             os.makedirs(self._results_dir)
@@ -230,7 +242,7 @@ class ModelSim(pl.LightningModule):
 
         
         Xb, Ystep1, Ystep2, Ystep3, Ystep4 = batch["X"],batch["Y"][:,0,:,:,:],batch["Y"][:,1,:,:,:],batch["Y"][:,2,:,:,:],batch["Y"][:,3,:,:,:]
-                
+        Xb, Ystep1, Ystep2, Ystep3, Ystep4 = Xb.to(self._device), Ystep1.to(self._device), Ystep2.to(self._device), Ystep3.to(self._device), Ystep4.to(self._device)        
         Ydata = [Ystep1, Ystep2, Ystep3, Ystep4]
         
         Ypred1 = self(Xb)
@@ -244,6 +256,7 @@ class ModelSim(pl.LightningModule):
         
         for i in range(1,self._n_steps_ahead):
             
+           
             Ypred = self(Ypred)
             
             losses.append(self.criterion(Ypred, Ydata[i]))
@@ -263,7 +276,9 @@ class ModelSim(pl.LightningModule):
     
     def validation_epoch_end(self, validation_step_outputs):
         
-        validation_step_outputs = np.array(torch.mean(torch.Tensor(validation_step_outputs),axis =0))
+        vs_outputs = [[d["vl_1"],d["vl_2"], d["vl_3"], d["vl_4"]] for d in validation_step_outputs]
+        
+        validation_step_outputs = np.array(torch.mean(torch.Tensor(vs_outputs),axis =0))
         
         val_loss1 = validation_step_outputs[0]
         val_loss2 = validation_step_outputs[1]
@@ -271,9 +286,12 @@ class ModelSim(pl.LightningModule):
         val_loss4 = validation_step_outputs[3]
         
         
-        if (val_loss1 < self._tol_next_step) and self._n_steps_ahead <=3:
+        if (val_loss1 < self._tol_next_step) and self._n_steps_ahead <=2:#2 steps for now
+            
             
             self._n_steps_ahead +=1
+            
+            print("advancing n steps ahead {}",self._n_steps_ahead)
         
         return {
                 "val_loss":val_loss1, 
@@ -291,7 +309,7 @@ class ModelSim(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         
         Xb, Ystep1, Ystep2, Ystep3, Ystep4 = batch["X"],batch["Y"][:,0,:,:,:],batch["Y"][:,1,:,:,:],batch["Y"][:,2,:,:,:],batch["Y"][:,2,:,:,:]
-        
+        Xb, Ystep1, Ystep2, Ystep3, Ystep4 = Xb.to(self._device), Ystep1.to(self._device), Ystep2.to(self._device), Ystep3.to(self._device), Ystep4.to(self._device)
         Ypred1 = self(Xb)
         Ypred2 = self(Ypred1)
         Ypred3 = self(Ypred2)
@@ -304,13 +322,21 @@ class ModelSim(pl.LightningModule):
         
 
         
-        return [val_loss1,val_loss2,val_loss3,val_loss4]
+        return {"vl_1":val_loss1,
+                "vl_2": val_loss2,
+                "vl_3": val_loss3,
+                "vl_4": val_loss4}
+    
+
     
     
     def test_step(self, batch, batch_idx):
         
         Xb, Ystep1, Ystep2, Ystep3, Ystep4 = batch["X"],batch["Y"][:,0,:,:,:],batch["Y"][:,1,:,:,:],batch["Y"][:,2,:,:,:],batch["Y"][:,2,:,:,:]
         
+        Xb, Ystep1, Ystep2, Ystep3, Ystep4 = Xb.to(self._device), Ystep1.to(self._device), Ystep2.to(self._device), Ystep3.to(self._device), Ystep4.to(self._device)
+        
+        
         Ypred1 = self(Xb)
         Ypred2 = self(Ypred1)
         Ypred3 = self(Ypred2)
@@ -323,7 +349,7 @@ class ModelSim(pl.LightningModule):
         
 
         
-        return {"loss_s1": val_loss1, "loss_s2": val_loss2, "loss_s3": val_loss3, "loss_s4":val_loss4}
+        return {"loss_s1": val_loss1, "loss_s2": val_loss2, "loss_s3": val_loss3, "loss_s4":val_loss4, "progress_bar":{"s1_val":val_loss1}}
         
 
         
@@ -338,7 +364,7 @@ class ModelSim(pl.LightningModule):
             'scheduler': lr_scheduler,
             'reduce_on_plateau': True,
             # val_checkpoint_on is val_loss passed in as checkpoint_on
-            'monitor': 'val_loss'
+            'monitor': 'loss_s1'
         }
         
         return [optimizer], [scheduler]
@@ -416,9 +442,11 @@ def prepare_x_y( simulations , skip_steps = 10, store_steps_ahead = 5):
 
 class SimDataset(Dataset):
     def __init__(self, X,Y):
+        #self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        
+        self._X = torch.Tensor(X)
 
-        self._X = X
-        self._Y = Y
+        self._Y = torch.Tensor(Y)
 
     def __len__(self):
         return len(self._X)
@@ -432,10 +460,13 @@ class SimDataset(Dataset):
     
 class DataModule():#problemdatamoduele import
     
-    def __init__(self, data_dir ,resize = (60,60), max_data = None, n_test_simulation = 12):
+    def __init__(self, data_dir ,resize = (60,60), max_data = None, n_test_simulation = 12, batch_size = 50):
         
         super().__init__()
         
+        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        
+        self._batch_size = batch_size
         self._max_data = max_data
         self._data_dir = data_dir
         self._names, self._data_arrays = None, None
@@ -482,7 +513,9 @@ class DataModule():#problemdatamoduele import
         
         test_simulations = [arrays_test[index][8:] for index in np.arange(0,n_test_simulation,1)]
         
-        extra_sims = [arrays_test[0],arrays_test[1][5:],arrays_test[2][15:]] #different u0s
+        extra_sims = [arrays_test[0],
+                      arrays_test[1][5:],
+                      arrays_test[2][15:]] #different u0s
         
         test_simulations.extend(extra_sims)
                           
@@ -490,11 +523,11 @@ class DataModule():#problemdatamoduele import
         
     def train_dataloader(self):
                       
-        return DataLoader(self.train_dataset, batch_size = 60)
+        return DataLoader(self.train_dataset, batch_size = self._batch_size)
                       
     def val_dataloader(self):
                       
-        return DataLoader(self.test_dataset, batch_size = 60)
+        return DataLoader(self.test_dataset, batch_size = self._batch_size)
                       
     def plot_simulation(self, simulation):
                       
@@ -521,11 +554,14 @@ class SimEvalCallback(Callback):
         self._datamodule = datamodule
         self._results_dir = results_dir
         self._save_every = save_every
-
+        self._epoch = 0
         
     def on_epoch_end(self,trainer, model):
         
-        epoch = trainer.current_epoch
+        #epoch = trainer.current_epoch
+        self._epoch+=1
+        epoch = self._epoch
+        print("EPOCH {}".format(epoch))
         
         if epoch%self._save_every == 0:
                 
