@@ -192,3 +192,12 @@ def plot_phases(pred_sim, real_sim, results_dir, index = 0, epoch = ""):
     fig.savefig(os.path.join(results_dir,name))
     
     return fig  
+
+def process_read_logs(file_dir):
+    
+    data = pd.read_csv(file_dir)
+    data = data.replace({np.nan:0})
+    groups = data.groupby(d["epoch"])
+    data = groups.aggregate("sum")
+    
+    return data

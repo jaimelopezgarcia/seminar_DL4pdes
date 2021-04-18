@@ -1,7 +1,7 @@
 import os
 import torch
 from torch import nn
-import skimage
+import skimage.transform
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader,Dataset
 #from pytorch_lightning.core.datamodule import LightningDataModule
@@ -135,13 +135,14 @@ class BasicNetSkipCon(nn.Module):
     
     """
     
-    def __init__(self, in_channels, hidden_channels, out_channels, blocks = [2, 2, 2, 2, 2], normalization = True, skip_con_weight = 0.1):
+    def __init__(self, in_channels, hidden_channels, out_channels, blocks = [2, 2, 2, 2, 2], normalization = True, skip_con_weight = 0.1, last_skip = True):
         
         super().__init__()
         
         
         layers = []
         
+        self._last_skip = last_skip
         self._skip_con_weight = skip_con_weight
         for i,_block in enumerate(blocks):
             
@@ -200,7 +201,13 @@ class BasicNetSkipCon(nn.Module):
             outs.append(_x)
             
             if i in self._pairs:
-                _x = _x + self._skip_con_weight*outs[self._pairs[i]]
+                if not(i == len(self._hidden_layers)-1):
+                    _x = _x + self._skip_con_weight*outs[self._pairs[i]]
+                    
+                else:
+                    if self._last_skip:
+                        _x = _x + self._skip_con_weight*outs[self._pairs[i]]
+
         
         
 
@@ -270,7 +277,9 @@ class ModelSim(pl.LightningModule):
         
         epoch_training_loss = torch.mean(torch.Tensor([d["loss"] for d in train_step_results]))
         
-
+        lr = self.optimizers().param_groups[0].get("lr")
+        
+        self.log("lr", lr)
             
         return {"log": {"epoch_training_loss": epoch_training_loss } }
     
@@ -284,6 +293,8 @@ class ModelSim(pl.LightningModule):
         val_loss2 = validation_step_outputs[1]
         val_loss3 = validation_step_outputs[2]
         val_loss4 = validation_step_outputs[3]
+        
+        self.log("val_loss", val_loss1)
         
         
         if (val_loss1 < self._tol_next_step) and self._n_steps_ahead <=2:#2 steps for now
@@ -560,8 +571,7 @@ class SimEvalCallback(Callback):
         
         #epoch = trainer.current_epoch
         self._epoch+=1
-        epoch = self._epoch
-        print("EPOCH {}".format(epoch))
+        epoch = int(self._epoch/2) #dirty fix
         
         if epoch%self._save_every == 0:
                 
