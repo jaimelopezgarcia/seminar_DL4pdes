@@ -5,9 +5,9 @@ import plotly.express as px
 import scipy  
 from tqdm import tqdm
 from utils import fenics_fun_2_grid
+from fenics import *
 import os
 from utils import make_gif
-from fenics import *
 import imageio
 
 def eval_gaussians(x,y, stds, mus, amps = None):
@@ -391,3 +391,8 @@ def post_process_and_save_he(sols, results_dir = "./data/HE", name_simulation = 
         plt.plot(np.arange(0,len(amps_max),1),np.abs(amps_max), label = "amp max")
         plt.legend()
         fig.savefig(os.path.join(results_dir,name_simulation+"amplitude_max.png"))
+        
+        
+        
+        
+        

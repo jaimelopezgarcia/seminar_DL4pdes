@@ -7,6 +7,7 @@ from tqdm import tqdm
 import io
 import matplotlib.pyplot as plt
 import os
+from mpl_toolkits.mplot3d import Axes3D  
 
 def fenics_fun_2_grid( fun, mesh, Nx_Ny = None):
     
@@ -32,6 +33,29 @@ def fenics_fun_2_grid( fun, mesh, Nx_Ny = None):
     
     return X,Y,Z
 
+def fenics_fun_2_grid1D( fun, mesh, Nx = None):
+    
+    points = mesh.coordinates()
+    values = fun.compute_vertex_values(mesh)
+    
+    x0 = mesh.coordinates()[:,0].min()
+    x1 = mesh.coordinates()[:,0].max()
+
+    
+    
+    if not(Nx):
+        Nx = int( len(mesh.coordinates() ) )
+    
+    else:
+        Nx = Nx
+    
+    X = np.linspace(x0, x1, Nx)
+    
+    Z = griddata(points, values, (X))
+    
+    return X,Z
+
+
 def scatter_2_grid(points, values, x_range, y_range, Nx = 100, Ny = 100):
     """
     
@@ -50,6 +74,8 @@ def scatter_2_grid(points, values, x_range, y_range, Nx = 100, Ny = 100):
     Z = griddata(points , values, (X,Y))
     
     return X, Y , Z
+
+
     
 def make_gif(list_ims, save_name, duration = 0.05, size = (200,200)):
     
@@ -62,7 +88,25 @@ def make_gif(list_ims, save_name, duration = 0.05, size = (200,200)):
             writer.append_data(np.array(im))
     writer.close()
     
+def make_gif_1D_arrays(list_arrays, duration = 0.1, name = "default_name", ylim = (-1,1), xlim = (0,1)):
     
+    outs = []
+    for array in list_arrays:
+        plt.close("all")
+        fig = plt.figure()
+        
+        x = np.linspace(0,1,len(array))
+        
+        p = plt.plot(x,array)
+        
+        plt.xlim(xlim)
+        plt.ylim(ylim)
+        
+        _array = fig_to_array(fig)
+        
+        outs.append(_array)
+        
+    make_gif(outs,name, duration = duration)
     
 def make_simulation_gif(eval_sim, real_sim, name, duration = 1, skip_time = ""):
     
@@ -201,3 +245,85 @@ def process_read_logs(file_dir):
     data = groups.aggregate("sum")
     
     return data
+
+
+
+
+def plot_2D_comparison(pred, real, X_Y = None):
+    
+    Zu = real
+    Zpred = pred
+    
+    if not(X_Y):
+        Xl = np.linspace(0,1, int(np.sqrt(real.size)) ) 
+        Yl = np.linspace(0,1, int(np.sqrt(real.size) ) )
+        X,Y = np.meshgrid(Xl,Yl)
+
+    fig = plt.figure()
+
+    fig.set_size_inches(16,16)
+    # Plot the surface.
+
+    ax1 = fig.add_subplot(3,2,1, projection = "3d")
+    surf = ax1.plot_surface(X, Y, Zu,
+                           linewidth=0, )
+    ax1.set_title("Analytic solution")
+
+    ax2 = fig.add_subplot(3,2,2, projection = "3d")
+    surf = ax2.plot_surface(X, Y, Zpred,
+                           linewidth=0,)  
+
+    ax2.set_title("NN solution")
+
+
+
+    ax3 = fig.add_subplot(3,2,3)
+    plt.imshow(Zu)
+
+    ax4 = fig.add_subplot(3,2,4)
+    plt.imshow(Zpred)
+
+
+    fig.add_subplot(3,2,5)
+
+    ax5 = fig.add_subplot(3,2,5)
+    o = ax5.imshow(Zpred-Zu)
+
+    ax5.set_title("Error")
+    fig.colorbar(o)
+    
+    return fig
+
+def _make_grid_plot_2D(Npoints, xa = 0, xb = 1, ya = 0, yb = 1):
+    
+    Np = Npoints
+    _x = np.linspace(xa, xb,Np)
+    _y = np.linspace(ya,yb,Np)
+    X,Y = np.meshgrid(_x,_y)
+
+    
+    return X,Y
+
+
+        
+def plot_2D_comparison_analytical(model_2D, fun_validation,Npoints = 80, xa = -1, xb = 1, ya = -1, yb = 1):
+    
+    fun_u = fun_validation
+    Np = Npoints
+    
+    X, Y = _make_grid_plot_2D(Np,xa = xa, xb = xb, ya = ya, yb = yb)
+    
+    _X, _Y = X.reshape(-1), Y.reshape(-1)
+    
+    Xnp = np.concatenate((_X.reshape((-1,1)), _Y.reshape((-1,1))), axis = 1)
+
+    outu = fun_u(_X,_Y)
+    Zreal  = outu.reshape((Np,Np))
+
+    with torch.no_grad():
+        Zpred = model_2D(torch.Tensor(Xnp)).detach().numpy()
+        Zpred = Zpred.reshape((Np,Np))
+        
+    fig = plot_2D_comparison(Zpred, Zreal)
+    
+    return fig
