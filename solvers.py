@@ -76,6 +76,98 @@ def eval_image(x,y, image):
 
 ########## ALLEN CAHN ###############
 
+
+class PeriodicBoundary1D(SubDomain):
+    
+    def __init__(self, L = 1.0):
+        super().__init__()
+        self._L = L
+    
+    def inside(self, x, on_boundary):
+        
+        L = self._L
+        sides = bool(x[0] < DOLFIN_EPS and (x[0]-L) < DOLFIN_EPS and on_boundary)
+
+
+        return sides
+
+    def map(self, x, y):
+
+        L = self._L
+
+        if near(x[0], L):
+            y[0] = x[0] - L
+
+
+
+
+
+
+
+
+def solve_allen_cahn_1D(M = 0.01,eps = 0.01, n_elements = 200,T_dt = 50 ,initial_conditions = "rectangles", dtype_out = np.float32):
+    
+        
+    
+    _dt = eps*1e-1*0.5
+
+    dt = Constant(_dt)
+    
+    mesh = UnitIntervalMesh(n_elements)
+    V= FunctionSpace(mesh, "P", 1,constrained_domain=PeriodicBoundary1D())
+
+    u = Function(V)  
+    v = TestFunction(V)
+    u_n = Function(V)
+
+
+    # Create intial conditions and interpolate
+    u_init = InitialConditionsAC1D(initial_conditions)
+    u_n.interpolate(u_init)
+
+
+
+    F = (u*v-u_n*v+M*dt*dot(grad(u),grad(v))+M*dt*(1/eps**2)*(u**2-1)*u*v)*dx
+
+
+    
+    sols = []
+    for i in tqdm(range(T_dt)):
+        
+
+
+        solve(F == 0, u)
+
+
+
+        u_n.assign(u)
+
+        X,Z = fenics_fun_2_grid1D(u,mesh)
+        
+        sols.append(Z)
+
+            
+    sols = np.array(sols).astype(dtype_out)
+    
+    
+    return sols
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class InitialConditionsAC(UserExpression):
     
     def __init__(self, mode = "random"):
