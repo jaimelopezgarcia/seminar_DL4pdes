@@ -41,6 +41,8 @@ model_config = {
     "channels": 70,
     "name_model": "BasicCNN",
     "skip_con_weight":0.1,
+    "modes_fourier": 16,
+    "width_fourier": 60,
 }
 
 
@@ -95,7 +97,7 @@ def train(input_config, output_config, model_config):
 
     elif name == "FourierNet":
 
-        model = ModelSim(FourierNet,12,40,
+        model = ModelSim(FourierNet,mc["modes_fourier"],mc["width_fourier"],
                  results_dir = results_dir, lr = mc["lr"])
 
     else:

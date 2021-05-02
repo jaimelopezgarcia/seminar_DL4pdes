@@ -168,7 +168,7 @@ def Nu_poisson_2D(u_pred, X , source_fun, sigma):
 def Nu_AC1D(u_pred, X , eps, M):
     
 
-    u_x = grad(u_pred,X, create_graph = True, grad_outputs = torch.ones_like(u_pred))[0].view(-1,1)
+    u_x = grad(u_pred,X, create_graph = True, grad_outputs = torch.ones_like(u_pred))[0].view(-1,2)
     u_xx = grad(u_x, X, create_graph = True, grad_outputs = torch.ones_like(u_x))[0][:,0].view(-1,1)
     
     u_t = grad(u_pred,X, create_graph = True, grad_outputs = torch.ones_like(u_pred))[0][:,1].view(-1,1)

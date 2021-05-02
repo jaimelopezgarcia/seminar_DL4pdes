@@ -42,13 +42,17 @@ class ResidualBlock(nn.Module):
                      padding=padding, bias=True) #Bias can be set to false if using batch_norm ( is present there)
 
             torch.nn.init.kaiming_uniform_(layer.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
-
-            if normalization:
-                _layer = torch.nn.BatchNorm2d(out_channels)
-
-                layer = nn.Sequential(*[layer, _layer])
-
+            
             layers.append(layer)
+
+        if normalization:
+            self.norm = torch.nn.BatchNorm2d(out_channels)
+        else:
+            self.norm = nn.Identity()
+
+  
+            
+
 
 
 
@@ -61,7 +65,7 @@ class ResidualBlock(nn.Module):
         else:
 
             self._shortcut = nn.Identity()
-
+        
         self._activation = torch.nn.ReLU()
 
     def forward(self, x):
@@ -72,7 +76,7 @@ class ResidualBlock(nn.Module):
 
             _x = self._activation(layer(_x))
 
-        out = self._shortcut(x) + _x
+        out = self.norm(self._shortcut(x) + _x)#WRONG BATCH NORM WRONGLY APP
 
         return out
 
@@ -296,7 +300,7 @@ class SimpleBlock2d(nn.Module):
         self.modes1 = modes1
         self.modes2 = modes2
         self.width = width
-        self.fc0 = nn.Linear(1, self.width)### linear layer applied to multi dim input, operates on the last dim --> output  B,S,S,width
+        self.fc0 = nn.Linear(3, self.width)### linear layer applied to multi dim input, operates on the last dim --> output  B,S,S,width
         # input channel is 3: previous time step + 2 locations (u(t-1, x, y),  x, y)
 
         self.conv0 = SpectralConv2d_fast(self.width, self.width, self.modes1, self.modes2)
@@ -352,11 +356,31 @@ class FourierNet(nn.Module):
         """
         A wrapper function
         """
-
+        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.conv1 = SimpleBlock2d(modes, modes, width)
-
+        self._first = True #for lazy grid making with input shape
 
     def forward(self, x):
+        
+        batch = x.shape[0]
+        
+        if self._first:
+            S = x.shape[2]
+            batch = x.shape[0]
+            self._batch = batch
+            gridx = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
+            gridx = gridx.reshape(1, 1, S, 1).repeat([1, 1, 1, S])
+            gridy = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
+            gridy = gridy.reshape(1, 1, 1, S).repeat([1, 1, S, 1])
+            self._grid_no_rep = torch.cat((gridx, gridy), dim = 1)
+            self._grid = self._grid_no_rep.repeat(self._batch,1,1,1).to(self._device)
+            self._first = False
+            
+        if not(batch == self._batch):
+            self._grid = self._grid_no_rep.repeat(batch,1,1,1).to(self._device)
+            self._batch = batch
+        
+        x = torch.cat((x,self._grid), dim = 1)
         x = x.permute(0, 2, 3, 1) #to adapt to code implementation
         x = self.conv1(x)
         x = x.permute(0, 3, 1, 2)
@@ -858,11 +882,11 @@ class DataModule():#problemdatamoduele import
 
     def train_dataloader(self):
 
-        return DataLoader(self.train_dataset, batch_size = self._batch_size)
+        return DataLoader(self.train_dataset, batch_size = self._batch_size, shuffle = True)
 
     def val_dataloader(self):
 
-        return DataLoader(self.test_dataset, batch_size = self._batch_size)
+        return DataLoader(self.test_dataset, batch_size = self._batch_size, shuffle = True)
 
     def plot_simulation(self, simulation):
 
