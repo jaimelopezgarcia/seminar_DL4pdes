@@ -295,8 +295,8 @@ def plot_compare_2_models(model1,model2,test_arrays,skip_time,t0_tf=(20,60),resu
         os.makedirs(results_dir)
     except:
         pass
-    p1,r = eval_sim_batch(model,testnp[:,t0_tf[0]:t0_tf[1]:skip_time])
-    p2,r = eval_sim_batch(model2,testnp[:,t0_tf[0]:t0_tf[1]:skip_time])
+    p1,r = eval_sim_batch(model1,test_arrays[:,t0_tf[0]:t0_tf[1]:skip_time])
+    p2,r = eval_sim_batch(model2,test_arrays[:,t0_tf[0]:t0_tf[1]:skip_time])
 
     plot_save_error_time_2_model_comparison(p1,p2,r,skip_time,names = names, 
                                             results_dir = results_dir,name = "two_models_time_error")
