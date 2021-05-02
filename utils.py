@@ -8,6 +8,7 @@ import io
 import matplotlib.pyplot as plt
 import os
 from mpl_toolkits.mplot3d import Axes3D  
+import skimage.transform
 
 plt.style.use("ggplot")
 
