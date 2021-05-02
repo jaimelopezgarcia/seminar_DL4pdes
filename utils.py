@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import os
 from mpl_toolkits.mplot3d import Axes3D  
 
+plt.style.use("ggplot")
+
+
 def fenics_fun_2_grid( fun, mesh, Nx_Ny = None):
     
     points = mesh.coordinates()
@@ -115,6 +118,9 @@ def make_simulation_gif(eval_sim, real_sim, name, duration = 1, skip_time = ""):
     
     str_time = skip_time
     
+    _max = np.max(real_sim)
+    _min = np.min(real_sim)
+    
     arrays = []
     for i in range(len(eval_sim)):
         
@@ -128,11 +134,11 @@ def make_simulation_gif(eval_sim, real_sim, name, duration = 1, skip_time = ""):
         fig = plt.figure()
         plt.subplot(121)
         plt.title("Predicted {}".format(str_time),fontdict = {"fontsize":22})
-        o = plt.imshow(im1)
+        o = plt.imshow(im1,cmap='gray', vmin=_min, vmax=_max)
         plt.axis('off')
         plt.subplot(122)
         plt.title("Real {}".format(str_time),fontdict = {"fontsize":22})
-        o = plt.imshow(im2)
+        o = plt.imshow(im2,cmap='gray', vmin=_min, vmax=_max)
         plt.axis('off')
         fig.tight_layout()
         
@@ -140,10 +146,51 @@ def make_simulation_gif(eval_sim, real_sim, name, duration = 1, skip_time = ""):
         arrays.append(array)
         
     make_gif(arrays, name , duration = duration)
+ 
+def eval_sim_batch(model, test_sim):
     
+    model.eval()
+
+    with torch.no_grad():
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+        test_sim = torch.Tensor(test_sim).to(device)
+
+        H,W = test_sim.shape[-2],test_sim.shape[-1]
+        steps = test_sim.shape[1]
+        batch = test_sim.shape[0]
+
+
+        _init = test_sim[:,0].view(batch,1,H,W)
+
+        x_eval = model(_init)
+
+        evals = []
+        evals.append(np.array(x_eval.view(batch,H,W).cpu().detach().numpy()))
+
+        for i in tqdm(range(1,steps)):
+
+            x_eval = model(x_eval)
+
+            evals.append(np.array(x_eval.view(batch,H,W).cpu().detach().numpy()) )
+
+
+        pred = np.array(evals)[:-1].transpose([1,0,2,3])
+        real = np.array(test_sim.cpu().detach().numpy()).reshape((batch,steps,H,W))[:,1:,:]
+
+        first = np.array(test_sim[:,0].view(batch,1,H,W).cpu().detach().numpy())
+
+        pred = np.concatenate((first,pred),axis = 1)
+        real = np.concatenate((first,real), axis = 1)
+        
+    return pred, real
+
 
 def eval_sim(model, test_sim):
     
+    
+    model.eval()
 
         
     with torch.no_grad():
@@ -161,19 +208,19 @@ def eval_sim(model, test_sim):
         x_eval = model(_init)
 
         evals = []
-        evals.append(np.array(x_eval.view(H,W).cpu()))
+        evals.append(np.array(x_eval.view(H,W).cpu().detach().numpy()))
 
         for i in tqdm(range(1,len(test_sim))):
             
             x_eval = model(x_eval)
             
-            evals.append(np.array(x_eval.view(H,W).cpu()))
+            evals.append(np.array(x_eval.view(H,W).cpu().detach().numpy()) )
             
         
         pred = np.array(evals)[:-1]
-        real = np.array(test_sim.cpu()).reshape((len(test_sim),H,W))[1:]
+        real = np.array(test_sim.cpu().detach().numpy()).reshape((len(test_sim),H,W))[1:]
         
-        first = np.array(test_sim[0].view(1,H,W).cpu())
+        first = np.array(test_sim[0].view(1,H,W).cpu().detach().numpy())
         
         pred = np.concatenate((first,pred),axis = 0)
         real = np.concatenate((first,real), axis = 0)
@@ -181,6 +228,90 @@ def eval_sim(model, test_sim):
     return pred, real
 
 
+def plot_save_error_time(pred_batch,real_batch, skip_time , name = "time_error", results_dir = "./"):
+    """
+    batch_sim  (Nsims,steps,H,W)
+    
+    skip time, n times ahead used in training
+    """
+    
+    assert len(np.shape(pred_batch)) == 4
+    assert np.shape(pred_batch)==np.shape(real_batch)
+    
+    error_time = np.mean( np.square(pred_batch-real_batch) ,axis = (0,2,3))
+    
+    skip_time = int(skip_time)
+    
+    t = np.arange(0,len(pred_batch[0]),1)*skip_time
+    
+    fig = plt.figure(figsize = ( 12, 12))
+    
+    o = plt.plot(t,error_time)
+    plt.ylabel("MSE")
+    plt.xlabel("time steps")
+    plt.title("Prediction error vs time")
+    
+    fig.savefig(os.path.join(results_dir,name)+".png")
+    
+    
+    return fig
+
+def plot_save_error_time_2_model_comparison(pred_batch1,pred_batch2,real_batch, skip_time , names = ["model1","model2"],name = "time_error", results_dir = "./"):
+    """
+    batch_sim  (Nsims,steps,H,W)
+    
+    skip time, n times ahead used in training
+    """
+    
+    assert len(np.shape(pred_batch1)) == 4
+    assert np.shape(pred_batch1)==np.shape(real_batch)
+    
+    error_time1 = np.mean( np.square(pred_batch1-real_batch) ,axis = (0,2,3))
+    error_time2 = np.mean( np.square(pred_batch2-real_batch) ,axis = (0,2,3))
+    
+    skip_time = int(skip_time)
+    
+    t = np.arange(0,len(pred_batch1[0]),1)*skip_time
+    
+    fig = plt.figure(figsize = ( 12, 12))
+    
+    o = plt.plot(t,error_time1, label = names[0])
+    o = plt.plot(t,error_time2, label = names[1])
+    plt.ylabel("MSE")
+    plt.xlabel("time steps")
+    plt.title("Prediction error vs time")
+    plt.legend()
+    
+    fig.savefig(os.path.join(results_dir,name)+".png")
+    
+    
+    return fig
+
+
+def plot_compare_2_models(model1,model2,test_arrays,skip_time,t0_tf=(20,60),results_dir = "./",
+                          names = ["model1","model2"]):
+    try:
+        os.makedirs(results_dir)
+    except:
+        pass
+    p1,r = eval_sim_batch(model,testnp[:,t0_tf[0]:t0_tf[1]:skip_time])
+    p2,r = eval_sim_batch(model2,testnp[:,t0_tf[0]:t0_tf[1]:skip_time])
+
+    plot_save_error_time_2_model_comparison(p1,p2,r,skip_time,names = names, 
+                                            results_dir = results_dir,name = "two_models_time_error")
+
+
+def make_batch_simulation_gif(batch_sim,name, results_dir = "./", size = (200,200), duration = 0.2):
+    """
+    batch_sim  (Nsims,steps,H,W)
+    """
+    
+    assert len(np.shape(batch_sim)) == 4
+    
+    for i in tqdm(range(len(batch_sim))):
+        _name = name+"{}.gif".format(i)
+        _name = os.path.join(results_dir,_name)
+        gif = make_gif(batch_sim[i],_name, size = size,duration = duration)
 
 def fig_to_array(fig):
     
@@ -197,14 +328,14 @@ def fig_to_array(fig):
 
 
 
-def plot_phases(pred_sim, real_sim, results_dir, index = 0, epoch = ""):
+def plot_phases(pred_sim, real_sim, results_dir, index = 0, epoch = "", name = None):
     
     try:
         os.makedirs(results_dir)
     except:
         pass
     
-    name = "{}_epoch_sim_{}_phases.png".format(epoch,index)
+    
     
     fig = plt.figure()
     
@@ -232,8 +363,14 @@ def plot_phases(pred_sim, real_sim, results_dir, index = 0, epoch = ""):
 
     plt.title("abs  phase")
     
-    fig.suptitle("epoch {}".format(epoch))
-    fig.savefig(os.path.join(results_dir,name))
+    if not(name):
+        _name = "epoch {}".format(epoch)
+        name = "{}_epoch_sim_{}_phases.png".format(epoch,index)
+    else:
+        _name = name
+        name_dir = name+".PNG"
+    fig.suptitle(_name)
+    fig.savefig(os.path.join(results_dir,name_dir))
     
     return fig  
 
@@ -327,3 +464,78 @@ def plot_2D_comparison_analytical(model_2D, fun_validation,Npoints = 80, xa = -1
     fig = plot_2D_comparison(Zpred, Zreal)
     
     return fig
+
+def final_model_evaluationAC(model, test_arrays, skip_time, t0 = 20, t0_2 = 2,
+                             results_dir = "./results", name = None, skip_gifs_1 = 4,
+                          skip_gifs_2 = 1, skip_save_corrupted = 4):
+    """
+    test_arrays (batch,steps,1,H,W)
+    """
+    if not(name):
+        name = str(model.__class__)[8:-2].replace(".","_")
+        
+    results_dir = os.path.join(results_dir, name)
+
+    try:
+        os.makedirs(results_dir)
+    except:
+        pass
+        
+    assert len(np.shape(test_arrays)) == 5, "shape must be (batch,steps,H,W)"
+    
+    pred, real = eval_sim_batch(model, test_arrays[:,t0::skip_time,...])
+    
+    o = plot_save_error_time(pred,real,skip_time, name = "time_error",results_dir = results_dir)
+    
+    make_batch_simulation_gif(pred[::skip_gifs_1],"pred", results_dir = results_dir)
+    make_batch_simulation_gif(real[::skip_gifs_1],"real",results_dir = results_dir)
+    
+    
+    for i,(p,r) in enumerate(zip(pred[::skip_gifs_2],real[::skip_gifs_2])):
+        make_simulation_gif(p,r, os.path.join(results_dir,"sim_comparative_t0_{}_{}.gif".format(t0,i*skip_gifs_2)),
+                            skip_time = skip_time,duration = 0.5)
+        plot_phases(p,r,results_dir, name ="phases_{}".format(i*skip_gifs_2))
+        
+    
+    
+    pred, real = eval_sim_batch(model, test_arrays[:,t0_2::skip_time,...])##closer to random seed
+    for i,(p,r) in enumerate(zip(pred[::skip_gifs_2],real[::skip_gifs_2])):
+        make_simulation_gif(p,r, os.path.join(results_dir,"sim_comparative_t0_{}_{}.gif".format(t0_2,i*skip_gifs_2)),
+                            skip_time = skip_time,duration = 1)
+        
+    eval_model_corrupted_input(model,test_arrays,skip_time, results_dir = results_dir, skip_save = skip_save_corrupted)
+        
+        
+        
+def eval_model_corrupted_input(model,test_arrays,skip_time,results_dir = "./",skip_save = 1):
+    try:
+        os.makedirs(results_dir)
+    except:
+        pass
+    for i in tqdm(range(len(test_arrays[::skip_save]))):
+        s=i*skip_save
+        test_sim = test_arrays[i][20:]
+        H,W = np.shape(test_sim)[-2],np.shape(test_sim)[-1]
+        test_corrupted =  test_sim+(np.random.random((len(test_sim),1,H,W))-0.5)
+        test_resized = skimage.transform.resize(test_sim,(len(test_sim),1,int(H/2),int(W/2)))
+        ind1 = np.random.randint(0,H,(1000,1000))
+        test_sampled = np.zeros((len(test_sim),1,H,W))
+        test_sampled[...,ind1[:,0],ind1[:,1]] = test_sim[...,ind1[:,0],ind1[:,1]]
+
+        p0,r0 = eval_sim(model, test_sim[::skip_time])
+        p1,r1 = eval_sim(model,test_corrupted[::skip_time])
+        p2,r2 = eval_sim(model,test_resized[::skip_time])
+        p3,r3 = eval_sim(model,test_sampled[::skip_time])
+
+        names = [
+            "{}_vanilla.gif".format(s),
+            "{}_corrupted.gif".format(s),
+            "{}_downsampled.gif".format(s),
+            "{}_sampled.gif".format(s)
+        ]
+
+        names = [os.path.join(results_dir,name) for name in names]
+        make_simulation_gif(p0,r0,names[0])
+        make_simulation_gif(p1,r1,names[1])
+        make_simulation_gif(p2,r2,names[2])
+        make_simulation_gif(p3,r3,names[3])

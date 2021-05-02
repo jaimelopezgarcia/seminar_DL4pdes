@@ -300,7 +300,7 @@ class SimpleBlock2d(nn.Module):
         self.modes1 = modes1
         self.modes2 = modes2
         self.width = width
-        self.fc0 = nn.Linear(3, self.width)### linear layer applied to multi dim input, operates on the last dim --> output  B,S,S,width
+        self.fc0 = nn.Linear(input_channel, self.width)### linear layer applied to multi dim input, operates on the last dim --> output  B,S,S,width
         # input channel is 3: previous time step + 2 locations (u(t-1, x, y),  x, y)
 
         self.conv0 = SpectralConv2d_fast(self.width, self.width, self.modes1, self.modes2)
@@ -350,40 +350,55 @@ class SimpleBlock2d(nn.Module):
         return x
 
 class FourierNet(nn.Module):
-    def __init__(self, modes, width):
+    def __init__(self, modes, width, position_grid = False):
         super().__init__()
 
         """
         A wrapper function
         """
+        self._grid = position_grid
         self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.conv1 = SimpleBlock2d(modes, modes, width)
+        
+        if self._grid:
+            input_channel = 3
+        else:
+            input_channel = 1
+            
+        self.conv1 = SimpleBlock2d(modes, modes, width, input_channel = input_channel)
         self._first = True #for lazy grid making with input shape
-
+        
+        
     def forward(self, x):
         
-        batch = x.shape[0]
         
-        if self._first:
-            S = x.shape[2]
-            batch = x.shape[0]
-            self._batch = batch
-            gridx = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
-            gridx = gridx.reshape(1, 1, S, 1).repeat([1, 1, 1, S])
-            gridy = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
-            gridy = gridy.reshape(1, 1, 1, S).repeat([1, 1, S, 1])
-            self._grid_no_rep = torch.cat((gridx, gridy), dim = 1)
-            self._grid = self._grid_no_rep.repeat(self._batch,1,1,1).to(self._device)
-            self._first = False
+        if self._grid: ### Concatenating position encoding grid if true
             
-        if not(batch == self._batch):
-            self._grid = self._grid_no_rep.repeat(batch,1,1,1).to(self._device)
-            self._batch = batch
+            batch = x.shape[0]
+            
+            
+            if self._first:
+                S = x.shape[2]
+                batch = x.shape[0]
+                self._batch = batch
+                gridx = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
+                gridx = gridx.reshape(1, 1, S, 1).repeat([1, 1, 1, S])
+                gridy = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
+                gridy = gridy.reshape(1, 1, 1, S).repeat([1, 1, S, 1])
+                self._grid_no_rep = torch.cat((gridx, gridy), dim = 1)
+                self._grid = self._grid_no_rep.repeat(self._batch,1,1,1).to(self._device)
+                self._first = False
+
+            if not(batch == self._batch):
+                self._grid = self._grid_no_rep.repeat(batch,1,1,1).to(self._device)
+                self._batch = batch
+            x = torch.cat((x,self._grid), dim = 1)
+            
+
         
-        x = torch.cat((x,self._grid), dim = 1)
         x = x.permute(0, 2, 3, 1) #to adapt to code implementation
         x = self.conv1(x)
         x = x.permute(0, 3, 1, 2)
+        
         return x
 
 
@@ -397,158 +412,7 @@ class FourierNet(nn.Module):
 
 
 
-"""
-TRAIN_PATH = 'data/ns_data_V10000_N1200_T20.mat'
-TEST_PATH = 'data/ns_data_V10000_N1200_T20.mat'
 
-ntrain = 1000
-ntest = 200
-
-modes = 12
-width = 20
-
-batch_size = 20
-batch_size2 = batch_size
-
-epochs = 500
-learning_rate = 0.0025
-scheduler_step = 100
-scheduler_gamma = 0.5
-
-print(epochs, learning_rate, scheduler_step, scheduler_gamma)
-
-path = 'ns_fourier_2d_rnn_V10000_T20_N'+str(ntrain)+'_ep' + str(epochs) + '_m' + str(modes) + '_w' + str(width)
-path_model = 'model/'+path
-path_train_err = 'results/'+path+'train.txt'
-path_test_err = 'results/'+path+'test.txt'
-path_image = 'image/'+path
-
-runtime = np.zeros(2, )
-t1 = default_timer()
-
-sub = 1
-S = 64
-T_in = 10
-T = 10
-step = 1
-
-################################################################
-# load data
-################################################################
-
-reader = MatReader(TRAIN_PATH)
-train_a = reader.read_field('u')[:ntrain,::sub,::sub,:T_in]
-train_u = reader.read_field('u')[:ntrain,::sub,::sub,T_in:T+T_in]
-
-reader = MatReader(TEST_PATH)
-test_a = reader.read_field('u')[-ntest:,::sub,::sub,:T_in]
-test_u = reader.read_field('u')[-ntest:,::sub,::sub,T_in:T+T_in]
-
-print(train_u.shape)
-print(test_u.shape)
-assert (S == train_u.shape[-2])
-assert (T == train_u.shape[-1])
-
-train_a = train_a.reshape(ntrain,S,S,T_in)
-test_a = test_a.reshape(ntest,S,S,T_in)
-
-# pad the location (x,y)
-gridx = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
-gridx = gridx.reshape(1, S, 1, 1).repeat([1, 1, S, 1])
-gridy = torch.tensor(np.linspace(0, 1, S), dtype=torch.float)
-gridy = gridy.reshape(1, 1, S, 1).repeat([1, S, 1, 1])
-
-train_a = torch.cat((gridx.repeat([ntrain,1,1,1]), gridy.repeat([ntrain,1,1,1]), train_a), dim=-1)
-test_a = torch.cat((gridx.repeat([ntest,1,1,1]), gridy.repeat([ntest,1,1,1]), test_a), dim=-1)
-
-train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_a, train_u), batch_size=batch_size, shuffle=True)
-test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(test_a, test_u), batch_size=batch_size, shuffle=False)
-
-t2 = default_timer()
-
-print('preprocessing finished, time used:', t2-t1)
-device = torch.device('cuda')
-
-################################################################
-# training and evaluation
-################################################################
-
-model = Net2d(modes, width).cuda()
-# model = torch.load('model/ns_fourier_V100_N1000_ep100_m8_w20')
-
-print(model.count_params())
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
-
-
-myloss = LpLoss(size_average=False)
-gridx = gridx.to(device)
-gridy = gridy.to(device)
-
-for ep in range(epochs):
-    model.train()
-    t1 = default_timer()
-    train_l2_step = 0
-    train_l2_full = 0
-    for xx, yy in train_loader:
-        loss = 0
-        xx = xx.to(device)
-        yy = yy.to(device)
-
-        for t in range(0, T, step):
-            y = yy[..., t:t + step]
-            im = model(xx)
-            loss += myloss(im.reshape(batch_size, -1), y.reshape(batch_size, -1))
-
-            if t == 0:
-                pred = im
-            else:
-                pred = torch.cat((pred, im), -1)
-
-            xx = torch.cat((xx[..., step:-2], im,
-                            gridx.repeat([batch_size, 1, 1, 1]), gridy.repeat([batch_size, 1, 1, 1])), dim=-1)
-
-        train_l2_step += loss.item()
-        l2_full = myloss(pred.reshape(batch_size, -1), yy.reshape(batch_size, -1))
-        train_l2_full += l2_full.item()
-
-        optimizer.zero_grad()
-        loss.backward()
-        # l2_full.backward()
-        optimizer.step()
-
-    test_l2_step = 0
-    test_l2_full = 0
-    with torch.no_grad():
-        for xx, yy in test_loader:
-            loss = 0
-            xx = xx.to(device)
-            yy = yy.to(device)
-
-            for t in range(0, T, step):
-                y = yy[..., t:t + step]
-                im = model(xx)
-                loss += myloss(im.reshape(batch_size, -1), y.reshape(batch_size, -1))
-
-                if t == 0:
-                    pred = im
-                else:
-                    pred = torch.cat((pred, im), -1)
-
-                xx = torch.cat((xx[..., step:-2], im,
-                                gridx.repeat([batch_size, 1, 1, 1]), gridy.repeat([batch_size, 1, 1, 1])), dim=-1)
-
-
-            test_l2_step += loss.item()
-            test_l2_full += myloss(pred.reshape(batch_size, -1), yy.reshape(batch_size, -1)).item()
-
-    t2 = default_timer()
-    scheduler.step()
-    print(ep, t2 - t1, train_l2_step / ntrain / (T / step), train_l2_full / ntrain, test_l2_step / ntest / (T / step),
-          test_l2_full / ntest)
-
-
-"""
 #################################################
 
 
