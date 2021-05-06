@@ -14473,7 +14473,7 @@ J_{aug}(x_{T},p) = J(x_{T},p) + \lambda_{T}g(x_{T},x_{T-1},p) + \lambda_{T-1}g(x
 <li>If using Relu weights must be initializated with the proper scale ( He initialization). </li>
 <li>Scale input and labels and use Adam optimization with default parameters (pytorch), and small (1e-5) weight decay and reduce on plateau scheduler.</li>
 </ul>
-<p><img width="200" height="200" style = "float : right" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/basic_block.jpg?raw=true"></p>
+<p><img width="200" height="200" style = "float : right" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/basic_block.JPG?raw=true"></p>
 
 </div>
 </div>
@@ -14482,7 +14482,7 @@ J_{aug}(x_{T},p) = J(x_{T},p) + \lambda_{T}g(x_{T},x_{T-1},p) + \lambda_{T-1}g(x
 <h1 id="Learning-from-data">Learning from data<a class="anchor-link" href="#Learning-from-data">&#182;</a></h1><h2 id="Problem-statement">Problem statement<a class="anchor-link" href="#Problem-statement">&#182;</a></h2><p>We consider the PDE $P$ with BC as a mapping $\psi$ between function spaces where $X$ is the parameter space and $Y$ the solution space.
 $$P_{X}(y) = 0$$</p>
 <p>$F$ and $G$ are the operators that project the data to a discrete space. The symbol $\varphi$ represent the mapping in the discrete space.</p>
-<p><img width="900" height="500" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/scheme_operator.jpg?raw=true"></p>
+<p><img width="900" height="500" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/scheme_operator.JPG?raw=true"></p>
 <p>If we work directly in the discretized space, we'll model the mapping with a convolutional neural network by minimizing:
 $$ \underset{\theta}{argmin} \underset{x \sim \mu}{E}(Cost(\varphi_{solver}(x)-\hat{\varphi}(x,\theta))$$</p>
 <p>If we work in a function space we'll minimize:
@@ -14508,7 +14508,7 @@ $$<table>
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/gibbs_potential.jpg?raw=true" alt="drawing" width="300" height="300"  /></td>
+<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/gibbs_potential.JPG?raw=true" alt="drawing" width="300" height="300"  /></td>
 <td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/noise.png?raw=true" alt="drawing" width="300" height="300"  /></td>
 </tr>
 </tbody>
@@ -14569,7 +14569,7 @@ $$<table>
 <tbody>
 <tr>
 <td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/unetlike.png?raw=true" width = "600" height = "500"  /></td>
-<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/fourier_operator.jpg?raw=true"  width = "600"  height = "500" /></td>
+<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/fourier_operator.JPG?raw=true"  width = "600"  height = "500" /></td>
 </tr>
 </tbody>
 </table>
@@ -14644,8 +14644,8 @@ $$\underset{\theta}{argmin}\underset{u_{0},T}{E}(|u_{T+\Delta t}-\hat{u}_{T+\Del
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/multiscale_1.jpg?raw=true"   /></td>
-<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/multiscale_2.jpg?raw=true"   /></td>
+<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/multiscale_1.JPG?raw=true"   /></td>
+<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/multiscale_2.JPG?raw=true"   /></td>
 </tr>
 </tbody>
 </table>
@@ -14662,11 +14662,11 @@ $$\underset{\theta}{argmin}\underset{u_{0},T}{E}(|u_{T+\Delta t}-\hat{u}_{T+\Del
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/phases_26.png?raw=true"  width = "500" height = "500" /></td>
+<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/phases_26.PNG?raw=true"  width = "500" height = "500" /></td>
 <td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/sim_comparative_t0_10_26.gif?raw=true"  width = "400" height = "400" /></td>
 </tr>
 <tr>
-<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/phases_38.png?raw=true"  width = "500" height = "500" /></td>
+<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/phases_38.PNG?raw=true"  width = "500" height = "500" /></td>
 <td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/sim_comparative_t0_10_38.gif?raw=true" width = "400" height = "400"  />  </td>
 </tr>
 </tbody>
@@ -14842,7 +14842,7 @@ $$\underset{\theta}{argmin}\underset{u_{0},T}{E}(|u_{T+\Delta t}-\hat{u}_{T+\Del
 <tbody>
 <tr>
 <td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/batch_pinns.gif?raw=true"  width = "300" height = "300" /></td>
-<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/pinns_raissi.jpg?raw=true"   width = "700" height = "700"  /></td>
+<td style="text-align:center"><img src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/pinns_raissi.JPG?raw=true"   width = "700" height = "700"  /></td>
 </tr>
 </tbody>
 </table>
