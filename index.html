@@ -14469,9 +14469,9 @@ J_{aug}(x_{T},p) = J(x_{T},p) + \lambda_{T}g(x_{T},x_{T-1},p) + \lambda_{T-1}g(x
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h1 id="Deep-Learning,-a-modern-recipe">Deep Learning, a modern recipe<a class="anchor-link" href="#Deep-Learning,-a-modern-recipe">&#182;</a></h1><h2 id="Recipe-for-building-block/layer--and-optimizer">Recipe for building block/layer  and optimizer<a class="anchor-link" href="#Recipe-for-building-block/layer--and-optimizer">&#182;</a></h2><ul>
 <li>Use resnet (with different lengths) as a template and use as much capacity as you can afford.</li>
-<li>Main building block consist in layers with residual skip connections and batch normalization.</li>
-<li>If using Relu weights must be initializated with the proper scale ( He initialization). </li>
-<li>Scale input and labels and use Adam optimization with default parameters (pytorch), and small (1e-5) weight decay and reduce on plateau scheduler.</li>
+<li>Main building block consists in layers with residual skip connections and batch normalization.</li>
+<li>If using Relus weights must be initializated with the proper scale ( He initialization). </li>
+<li>Scale input and labels and use Adam optimizer with default parameters (pytorch), and small (1e-5) weight decay with reduce on plateau scheduler.</li>
 </ul>
 <p><img width="200" height="200" style = "float : right" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/basic_block.JPG?raw=true"></p>
 
@@ -14541,7 +14541,7 @@ $$<table>
 <div class="jp-Cell-inputWrapper"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h1 id="Learning-from-data">Learning from data<a class="anchor-link" href="#Learning-from-data">&#182;</a></h1><h2 id="Case-study-:-Evolutive-system,-Allen-Cahn,-spinodal-decomposition">Case study : Evolutive system, Allen Cahn, spinodal decomposition<a class="anchor-link" href="#Case-study-:-Evolutive-system,-Allen-Cahn,-spinodal-decomposition">&#182;</a></h2><p>This is an interesting problem to learn beacuse without being chaotic , it exhibits multiple spatial and temporal timescales that must be solved simultaneously to accurattely predict long term behaviour.</p>
-<p>We have a extremely fast destabilization at the beggining that is followed by a slow evolution guided by the interface advances. Even if the coalescence stage is generally slow, when two drops are close to each other, the blending is fast, so it must be captured with a sufficiently small time step</p>
+<p>We have a extremely fast destabilization at the beggining that is followed by a slow evolution of the interface.   </p>
 <table>
 <thead><tr>
 <th style="text-align:center">time evolution</th>
