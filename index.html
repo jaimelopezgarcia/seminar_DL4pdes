@@ -14273,7 +14273,7 @@ a.anchor-link {
 </li>
 <li><a href="#Deep-Learning,-a-modern-recipe">DL, a modern recipe</a><ul>
 <li>DL basics</li>
-<li>Backpropagation (it's just good'ol adjoint methodli>
+<li>Backpropagation (it's just good'ol adjoint method</li>
 <li>Going deep, main problems, main solutions</li>
 <li>Practicioner recipe</li>
 </ul>
@@ -14471,9 +14471,9 @@ J_{aug}(x_{T},p) = J(x_{T},p) + \lambda_{T}g(x_{T},x_{T-1},p) + \lambda_{T-1}g(x
 <li>Use resnet (with different lengths) as a template and use as much capacity as you can afford.</li>
 <li>Main building block consists in layers with residual skip connections and batch normalization.</li>
 <li>If using Relus weights must be initializated with the proper scale ( He initialization). </li>
-<li>Scale input and labels and use Adam optimizer with default parameters (pytorch), and small (1e-5) weight decay with reduce on plateau scheduler.</li>
+<li>Normalize input and labels and use Adam optimizer with default parameters (pytorch), and small (1e-5) weight decay with reduce on plateau scheduler.</li>
 </ul>
-<p><img width="200" height="200" style = "float : right" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/basic_block.JPG?raw=true"></p>
+<p><img width="200" height="200" style = "float : center" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/basic_block.JPG?raw=true"></p>
 
 </div>
 </div>
@@ -14483,6 +14483,8 @@ J_{aug}(x_{T},p) = J(x_{T},p) + \lambda_{T}g(x_{T},x_{T-1},p) + \lambda_{T-1}g(x
 $$P_{X}(y) = 0$$</p>
 <p>$F$ and $G$ are the operators that project the data to a discrete space. The symbol $\varphi$ represent the mapping in the discrete space.</p>
 <p><img width="900" height="500" src="https://github.com/jaimelopezgarcia/seminar_DL4pdes/blob/main/media/scheme_operator.JPG?raw=true"></p>
+<p><a href="https://arxiv.org/pdf/2005.03180.pdf"><cite style="font-size:10px">MODEL REDUCTION AND NEURAL NETWORKS FOR
+PARAMETRIC PDES </cite></a></p>
 <p>If we work directly in the discretized space, we'll model the mapping with a convolutional neural network by minimizing:
 $$ \underset{\theta}{argmin} \underset{x \sim \mu}{E}(Cost(\varphi_{solver}(x)-\hat{\varphi}(x,\theta))$$</p>
 <p>If we work in a function space we'll minimize:
@@ -14563,7 +14565,7 @@ $$<table>
 <h1 id="Learning-from-data">Learning from data<a class="anchor-link" href="#Learning-from-data">&#182;</a></h1><h2 id="Models-architecture">Models architecture<a class="anchor-link" href="#Models-architecture">&#182;</a></h2><table>
 <thead><tr>
 <th style="text-align:center">Image-Image CNN</th>
-<th style="text-align:center">Fourier Neural Operator</th>
+<th style="text-align:center">Fourier Neural Operator <a href="https://arxiv.org/abs/2010.08895"><cite style="font-size:10px">Fourier Neural Operator for Parametric Partial Differential Equations</cite>.</a></th>
 </tr>
 </thead>
 <tbody>
@@ -14851,7 +14853,8 @@ $$\underset{\theta}{argmin}\underset{u_{0},T}{E}(|u_{T+\Delta t}-\hat{u}_{T+\Del
 </div>
 <div class="jp-Cell-inputWrapper"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="Unsupervised-learning">Unsupervised learning<a class="anchor-link" href="#Unsupervised-learning">&#182;</a></h1><h2 id="Physical-informed-neural-networks">Physical informed neural networks<a class="anchor-link" href="#Physical-informed-neural-networks">&#182;</a></h2><h3 id="Poisson-equation--$\Delta-u-=-0.2(sin(9x)+sin(5y))$">Poisson equation  $\Delta u = 0.2(sin(9x)+sin(5y))$<a class="anchor-link" href="#Poisson-equation--$\Delta-u-=-0.2(sin(9x)+sin(5y))$">&#182;</a></h3><table>
+<h1 id="Unsupervised-learning">Unsupervised learning<a class="anchor-link" href="#Unsupervised-learning">&#182;</a></h1><h2 id="Physical-informed-neural-networks">Physical informed neural networks + SIREN<a class="anchor-link" href="#Physical-informed-neural-networks">&#182;</a></h2><h3 id="Poisson-equation--$\Delta-u-=-0.2(sin(9x)+sin(5y))$">Poisson equation  $\Delta u = 0.2(sin(9x)+sin(5y))$<a class="anchor-link" href="#Poisson-equation--$\Delta-u-=-0.2(sin(9x)+sin(5y))$">&#182;</a></h3><table>
+   <a href="https://arxiv.org/abs/2006.09661"><cite style="font-size:15px">Implicit Neural Representations with Periodic Activation Functions</cite>.</a>
 <thead><tr>
 <th style="text-align:center">$w_{0} = 1.5$</th>
 <th style="text-align:center">$w_{0} = 8$</th>
