@@ -462,3 +462,38 @@ class Poisson2DModel(pl.LightningModule):
         
         
         return optimizer
+    
+    
+from utils import plot_2D_comparison_analytical,fig_to_array, make_gif
+   
+class SimEvalCallback(Callback):
+
+    def __init__(self, val_fun, results_dir, plot_every = 10, save_every = 50, size = (300,300), name = "results"):
+
+        self._results_dir = results_dir
+        self._save_every = save_every
+        self._epoch = 0
+        self._arrays = []
+        self._plot_every = plot_every
+        self._val_fun = val_fun
+        self._size = size
+        self._name = name
+    def on_epoch_end(self,trainer, model):
+
+        #epoch = trainer.current_epoch
+        self._epoch+=1
+        epoch = int(self._epoch/2) #dirty fix
+        
+        
+        if epoch%self._plot_every == 0:
+            plt.close("all")
+            
+            fig = plot_2D_comparison_analytical(model, self._val_fun, title = "epoch {}".format(epoch)) 
+
+            array = fig_to_array(fig)
+            
+            self._arrays.append(array)
+            
+        if epoch%self._save_every == 0:
+            
+            make_gif(self._arrays,self._results_dir+"/{}.gif".format(self._name), size = self._size, duration = 0.5)

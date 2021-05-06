@@ -13,6 +13,40 @@ import skimage.transform
 plt.style.use("ggplot")
 
 
+
+
+##### POISSON########
+import sympy as sym
+from sympy.abc import x,y
+
+
+def fun_poisson_linear_1D(u, sigma ):
+    
+    
+    f = - sigma*sym.diff(sym.diff(u, x), x)
+    f = sym.simplify(f)
+    fun_f = sym.lambdify((x),f,"numpy")
+    fun_u = sym.lambdify((x),u,"numpy")
+    u_code = sym.printing.ccode(u)
+    f_code = sym.printing.ccode(f)
+    
+    return fun_f, fun_u,  u_code, f_code
+
+
+
+def fun_poisson_linear_2D(u, sigma ):
+    
+    
+    f = - sigma*(sym.diff(sym.diff(u, x), x)+ sym.diff(sym.diff(u, y), y) )
+    f = sym.simplify(f)
+    fun_f = sym.lambdify((x,y),f,"numpy")
+    fun_u = sym.lambdify((x,y),u,"numpy")
+    u_code = sym.printing.ccode(u)
+    f_code = sym.printing.ccode(f)
+    
+    return fun_f, fun_u,  u_code, f_code
+
+#####
 def fenics_fun_2_grid( fun, mesh, Nx_Ny = None):
     
     points = mesh.coordinates()
@@ -387,7 +421,7 @@ def process_read_logs(file_dir):
 
 
 
-def plot_2D_comparison(pred, real, X_Y = None):
+def plot_2D_comparison(pred, real, X_Y = None, title = ""):
     
     Zu = real
     Zpred = pred
@@ -430,6 +464,9 @@ def plot_2D_comparison(pred, real, X_Y = None):
     ax5.set_title("Error")
     fig.colorbar(o)
     
+    if title:
+        fig.suptitle(title)
+    
     return fig
 
 def _make_grid_plot_2D(Npoints, xa = 0, xb = 1, ya = 0, yb = 1):
@@ -444,7 +481,7 @@ def _make_grid_plot_2D(Npoints, xa = 0, xb = 1, ya = 0, yb = 1):
 
 
         
-def plot_2D_comparison_analytical(model_2D, fun_validation,Npoints = 80, xa = -1, xb = 1, ya = -1, yb = 1):
+def plot_2D_comparison_analytical(model_2D, fun_validation,Npoints = 80, xa = -1, xb = 1, ya = -1, yb = 1, title = ""):
     
     fun_u = fun_validation
     Np = Npoints
@@ -462,7 +499,7 @@ def plot_2D_comparison_analytical(model_2D, fun_validation,Npoints = 80, xa = -1
         Zpred = model_2D(torch.Tensor(Xnp)).detach().numpy()
         Zpred = Zpred.reshape((Np,Np))
         
-    fig = plot_2D_comparison(Zpred, Zreal)
+    fig = plot_2D_comparison(Zpred, Zreal, title = title)
     
     return fig
 
